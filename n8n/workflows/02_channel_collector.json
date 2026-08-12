@@ -1,0 +1,543 @@
+{
+  "name": "Telegram Intelligence Agent — Channel Collector",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1000,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000001001",
+      "name": "Every 5 Minutes"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -780,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000001002",
+      "name": "Get Active Subscriptions"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const u=String($json.channel_username||'').toLowerCase(); if(!/^[a-z][a-z0-9_]{3,31}$/.test(u))return {json:{kind:'error',chat_id:String($json.chat_id||''),reply:'نام کانال ذخیره‌شده معتبر نیست: '+u}}; return {json:{kind:'request',chat_id:String($json.chat_id),channel_username:u,last_checked_message_id:Number($json.last_checked_message_id||0),url:'https://t.me/s/'+u}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -560,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000001003",
+      "name": "Prepare Poll"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "request"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -340,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000001004",
+      "name": "Route Poll"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "timeout": 20000,
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -100,
+        -80
+      ],
+      "id": "00000000-0000-4000-8000-000000001005",
+      "name": "Fetch Public Preview",
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1500,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const inputs=$input.all();\nconst polls=$items('Prepare Poll');\nconst output=[];\nconst decode=(v)=>String(v||'').replace(/&(#x[0-9a-f]+|#\\d+|amp|lt|gt|quot|apos|nbsp);/gi,(_,e)=>{const n={amp:'&',lt:'<',gt:'>',quot:'\"',apos:\"'\",nbsp:' '};if(e[0]==='#'){const h=e[1]?.toLowerCase()==='x';const c=parseInt(e.slice(h?2:1),h?16:10);return Number.isFinite(c)?String.fromCodePoint(c):'';}return n[e.toLowerCase()]||'';});\nconst clean=(v)=>decode(String(v||'').replace(/<br\\s*\\/?>/gi,'\\n').replace(/<\\/p\\s*>/gi,'\\n').replace(/<[^>]*>/g,'')).replace(/\\n{3,}/g,'\\n\\n').trim();\nconst views=(v)=>{const m=String(v||'').trim().replace(/,/g,'').toUpperCase().match(/^([0-9]+(?:\\.[0-9]+)?)\\s*([KMB])?$/);return m?Math.round(Number(m[1])*({K:1e3,M:1e6,B:1e9}[m[2]]||1)):0;};\nfor(let inputIndex=0;inputIndex<inputs.length;inputIndex++){\n  const poll=polls[inputIndex]?.json||{};\n  const response=inputs[inputIndex]?.json||{};\n  const html=typeof response.data==='string'?response.data:(typeof response.body==='string'?response.body:'');\n  if(!html||html.length<500){output.push({json:{kind:'error',chat_id:String(poll.chat_id||''),reply:'دریافت Web Preview کانال @'+String(poll.channel_username||'')+' ناموفق بود؛ بعداً دوباره تلاش می‌شود.'},pairedItem:{item:inputIndex}});continue;}\n  const blocks=html.split(/(?=<div class=\"tgme_widget_message_wrap)/i).slice(1);\n  let messageCount=0;\n  for(const block of blocks){\n    const post=block.match(/data-post=\"([^\"/]+)\\/(\\d+)\"/i);\n    if(!post||post[1].toLowerCase()!==poll.channel_username)continue;\n    const message_id=Number(post[2]);\n    if(message_id<=Number(poll.last_checked_message_id||0))continue;\n    const tm=block.match(/<div class=\"tgme_widget_message_text[^>]*>([\\s\\S]*?)<\\/div>/i);\n    const dm=block.match(/datetime=\"([^\"]+)\"/i);\n    const vm=block.match(/tgme_widget_message_views[^>]*>([^<]*)</i);\n    output.push({json:{kind:'message',channel_username:poll.channel_username,message_id,message_url:'https://t.me/'+poll.channel_username+'/'+message_id,text:tm?clean(tm[1]):'',published_at:dm?dm[1]:null,views:views(vm?clean(vm[1]):0),collected_at:new Date().toISOString(),topic:'',importance_score:0,summary:''},pairedItem:{item:inputIndex}});\n    messageCount++;\n  }\n  if(messageCount===0){const hasPosts=blocks.some(b=>/data-post=\"[^\"/]+\\/\\d+\"/i.test(b));output.push({json:hasPosts?{kind:'noop',channel_username:poll.channel_username}:{kind:'error',chat_id:String(poll.chat_id||''),reply:'کانال @'+String(poll.channel_username||'')+' عمومی/قابل‌مشاهده در Web Preview نیست یا پیامی ندارد.'},pairedItem:{item:inputIndex}});}\n}\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        -80
+      ],
+      "id": "00000000-0000-4000-8000-000000001006",
+      "name": "Parse Preview"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "message",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "message"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.kind }}",
+                    "rightValue": "noop",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "noop"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        380,
+        -80
+      ],
+      "id": "00000000-0000-4000-8000-000000001007",
+      "name": "Route Parsed"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $json.channel_username }}"
+            },
+            {
+              "keyName": "message_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.message_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "channel_username": "={{ $json.channel_username }}",
+            "message_id": "={{ $json.message_id }}",
+            "message_url": "={{ $json.message_url }}",
+            "text": "={{ $json.text }}",
+            "published_at": "={{ $json.published_at }}",
+            "views": "={{ $json.views }}",
+            "collected_at": "={{ $json.collected_at }}",
+            "topic": "={{ $json.topic }}",
+            "importance_score": "={{ $json.importance_score }}",
+            "summary": "={{ $json.summary }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        620,
+        -160
+      ],
+      "id": "00000000-0000-4000-8000-000000001008",
+      "name": "Upsert Messages",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const expected=$items('Parse Preview').map(i=>i.json).filter(x=>x.kind==='message'); const saved=$input.all().map(i=>i.json).filter(x=>x.channel_username&&x.message_id); const e={},s={}; for(const x of expected)e[x.channel_username]=(e[x.channel_username]||0)+1; for(const x of saved){s[x.channel_username]=(s[x.channel_username]||0)+1;} return Object.keys(e).filter(ch=>s[ch]===e[ch]).map(ch=>({json:{channel_username:ch,last_checked_message_id:Math.max(...expected.filter(x=>x.channel_username===ch).map(x=>Number(x.message_id)))}}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        860,
+        -160
+      ],
+      "id": "00000000-0000-4000-8000-000000001009",
+      "name": "Finalize Checkpoints"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "last_checked_message_id": "={{ $json.last_checked_message_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        -160
+      ],
+      "id": "00000000-0000-4000-8000-000000001010",
+      "name": "Advance Subscription Checkpoint"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{chat_id:String($json.chat_id||''),reply:String($json.reply||'خطای موقت در جمع‌آوری کانال.')}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        40
+      ],
+      "id": "00000000-0000-4000-8000-000000001011",
+      "name": "Normalize Collector Error"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000) }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        860,
+        40
+      ],
+      "id": "00000000-0000-4000-8000-000000001012",
+      "name": "Notify Collector Error",
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Every 5 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Get Active Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Prepare Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Poll": {
+      "main": [
+        [
+          {
+            "node": "Route Poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Poll": {
+      "main": [
+        [
+          {
+            "node": "Fetch Public Preview",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Notify Collector Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch Public Preview": {
+      "main": [
+        [
+          {
+            "node": "Parse Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Preview": {
+      "main": [
+        [
+          {
+            "node": "Route Parsed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Parsed": {
+      "main": [
+        [
+          {
+            "node": "Upsert Messages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Normalize Collector Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Messages": {
+      "main": [
+        [
+          {
+            "node": "Finalize Checkpoints",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Checkpoints": {
+      "main": [
+        [
+          {
+            "node": "Advance Subscription Checkpoint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Collector Error": {
+      "main": [
+        [
+          {
+            "node": "Notify Collector Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tehran",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none"
+  },
+  "versionId": "00000000-0000-4000-8000-000000001013",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

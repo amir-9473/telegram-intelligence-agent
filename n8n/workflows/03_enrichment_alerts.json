@@ -1,0 +1,513 @@
+{
+  "name": "Telegram Intelligence Agent — AI Enrichment and Alerts",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 10
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1000,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002001",
+      "name": "Every 10 Minutes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "00000000-0000-4000-8000-000000002002",
+              "name": "openrouter_model",
+              "value": "={{ $vars.OPENROUTER_MODEL || \"openai/gpt-4.1-mini\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -800,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002003",
+      "name": "Runtime Config"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "returnAll": false,
+        "limit": 100,
+        "orderBy": true,
+        "orderByColumn": "published_at",
+        "orderByDirection": "DESC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -600,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002004",
+      "name": "Get Candidate Messages"
+    },
+    {
+      "parameters": {
+        "jsCode": "const items=$input.all().map(i=>i.json).filter(x=>x.message_id&&(!x.summary||!x.topic)).slice(0,20); if(!items.length)return []; const compact=items.map(x=>({channel_username:x.channel_username,message_id:x.message_id,text:(x.text||'[پیام بدون متن]').slice(0,1800),published_at:x.published_at,views:Number(x.views||0)})); return [{json:{source:items,request:{model:$('Runtime Config').first().json.openrouter_model,temperature:0.1,reasoning:{effort:'none'},response_format:{type:'json_object'},messages:[{role:'system',content:'برای هر item فقط JSON بده: {items:[{channel_username,message_id,topic,summary_fa,content_importance}]}. topic کوتاه و استاندارد، summary_fa حداکثر ۲ جمله فارسی، content_importance عدد ۰..۱۰۰. هیچ item را حذف نکن.'},{role:'user',content:JSON.stringify(compact)}]}}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002005",
+      "name": "Prepare AI Batch"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "timeout": 45000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        -140,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002006",
+      "name": "OpenRouter Batch",
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1500,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const prep=$('Prepare AI Batch').first().json; const message=$json.choices?.[0]?.message||{}; let raw=message.content||message.reasoning; if(typeof raw!=='string'||!raw.trim())return []; raw=raw.trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,''); let parsed; try{parsed=JSON.parse(raw);}catch{const start=raw.indexOf('{');const end=raw.lastIndexOf('}');if(start<0||end<=start)return [];try{parsed=JSON.parse(raw.slice(start,end+1));}catch{return [];}} const map=new Map((parsed.items||[]).map(x=>[String(x.channel_username).replace(/^@/,'').toLowerCase()+':'+Number(x.message_id),x])); const now=Date.now(); const out=[]; for(const src of prep.source){const key=String(src.channel_username).replace(/^@/,'').toLowerCase()+':'+Number(src.message_id);const ai=map.get(key);if(!ai||typeof ai.summary_fa!=='string'||typeof ai.topic!=='string')continue;const age=Math.max(0,(now-new Date(src.published_at).getTime())/3600000);const freshness=Math.max(0,1-age/72);const view=Math.min(1,Math.log10(Number(src.views||0)+1)/6);const content=Math.min(100,Math.max(0,Number(ai.content_importance||0)))/100;out.push({json:{channel_username:src.channel_username,message_id:Number(src.message_id),message_url:src.message_url,text:src.text,published_at:src.published_at,views:Number(src.views||0),collected_at:src.collected_at,topic:ai.topic.trim().slice(0,60),summary:ai.summary_fa.trim().slice(0,500),importance_score:Math.round(100*(.35*freshness+.25*view+.40*content))}});}return out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        100,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002007",
+      "name": "Parse AI Result"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $json.channel_username }}"
+            },
+            {
+              "keyName": "message_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.message_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "topic": "={{ $json.topic }}",
+            "summary": "={{ $json.summary }}",
+            "importance_score": "={{ $json.importance_score }}"
+          },
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        340,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002008",
+      "name": "Update Enriched Messages",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        580,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002009",
+      "name": "Get Active Alerts",
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const alerts=$items('Get Active Alerts').map(i=>i.json).filter(x=>x.alert_id);const msgs=$items('Get Candidate Messages').map(i=>i.json);const allowed=new Set($input.all().map(i=>i.json).filter(s=>s.status==='active'&&s.chat_id&&s.channel_username).map(s=>String(s.chat_id)+':'+String(s.channel_username).toLowerCase()));const out=[];for(const a of alerts)for(const m of msgs){const channel=String(m.channel_username||'').toLowerCase();if(!allowed.has(String(a.chat_id)+':'+channel))continue;if(a.channel_username&&a.channel_username!=='*'&&String(a.channel_username).toLowerCase()!==channel)continue;if(!String(m.text||'').toLocaleLowerCase('fa').includes(String(a.keyword||'').toLocaleLowerCase('fa')))continue;out.push({json:{delivery_key:a.alert_id+':'+channel+':'+m.message_id,alert_id:a.alert_id,chat_id:String(a.chat_id),channel_username:channel,message_id:m.message_id,keyword:a.keyword,message_url:m.message_url,summary:m.summary||String(m.text||'').slice(0,240),status:'pending',created_at:new Date().toISOString()}});}return out;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        940,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002010",
+      "name": "Match Alerts"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alert_deliveries",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "delivery_key",
+              "condition": "eq",
+              "keyValue": "={{ $json.delivery_key }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1060,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002011",
+      "name": "Delivery New?"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alert_deliveries",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1300,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002012",
+      "name": "Record Alert Delivery",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "return {json:{chat_id:String($json.chat_id),reply:'🚨 هشدار «'+$json.keyword+'» در @'+$json.channel_username+'\\n'+($json.summary||'پیام جدید مرتبط')+'\\n'+$json.message_url}};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002013",
+      "name": "Format Alert"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000) }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1780,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002014",
+      "name": "Send Alert",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        700,
+        120
+      ],
+      "id": "00000000-0000-4000-8000-000000002016",
+      "name": "Get Alert Subscriptions",
+      "executeOnce": true,
+      "alwaysOutputData": true
+    }
+  ],
+  "connections": {
+    "Every 10 Minutes": {
+      "main": [
+        [
+          {
+            "node": "Runtime Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runtime Config": {
+      "main": [
+        [
+          {
+            "node": "Get Candidate Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Candidate Messages": {
+      "main": [
+        [
+          {
+            "node": "Prepare AI Batch",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Active Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare AI Batch": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter Batch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Batch": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Result": {
+      "main": [
+        [
+          {
+            "node": "Update Enriched Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Alerts": {
+      "main": [
+        [
+          {
+            "node": "Get Alert Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Alerts": {
+      "main": [
+        [
+          {
+            "node": "Delivery New?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delivery New?": {
+      "main": [
+        [
+          {
+            "node": "Record Alert Delivery",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Alert Delivery": {
+      "main": [
+        [
+          {
+            "node": "Format Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert": {
+      "main": [
+        [
+          {
+            "node": "Send Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Alert Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Match Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tehran",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none"
+  },
+  "versionId": "00000000-0000-4000-8000-000000002015",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

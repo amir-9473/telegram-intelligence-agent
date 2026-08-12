@@ -1,0 +1,1932 @@
+{
+  "name": "Telegram Intelligence Agent — Bot Control",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1300,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000000001",
+      "name": "Telegram Trigger"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "00000000-0000-4000-8000-000000000002",
+              "name": "openrouter_model",
+              "value": "={{ $vars.OPENROUTER_MODEL || \"openai/gpt-4.1-mini\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1080,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000000003",
+      "name": "Runtime Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "\nconst raw = String($json.message?.text || '').trim();\nconst chat_id = String($json.message?.chat?.id || '');\nconst user_id = String($json.message?.from?.id || $json.message?.chat?.id || '');\nconst parts = raw.split(/\\s+/); const command = (parts.shift() || '').split('@')[0].toLowerCase();\nconst help = 'دستورها: /add @channel، /remove @channel، /list، /latest @channel [hours] [min_views]، /ask سؤال، /digest، /alert add keyword، /alert list، /alert remove ALERT_ID';\nconst normalize = (v) => { const u=String(v||'').trim().replace(/^https?:\\/\\/t\\.me\\/(?:s\\/)?/i,'').replace(/^@/,'').replace(/\\/$/,'').toLowerCase(); return /^[a-z][a-z0-9_]{3,31}$/.test(u)?u:null; };\nconst reply = (text) => [{json:{chat_id,user_id,action:'reply',reply:text}}];\nif (command === '/start') return reply('سلام! من کانال‌های عمومی تلگرام را پایش می‌کنم.\\n\\n'+help);\nif (command === '/help') return reply(help);\nif (command === '/list') return parts.length?reply('فرمت درست: /list'):[{json:{chat_id,user_id,action:'list'}}];\nif (command === '/digest') return parts.length?reply('فرمت درست: /digest'):[{json:{chat_id,user_id,action:'digest'}}];\nif (command === '/add' || command === '/remove') { const channel=parts.length===1?normalize(parts[0]):null; return channel?[{json:{chat_id,user_id,action:command.slice(1),channel_username:channel}}]:reply('نام کانال معتبر نیست؛ نمونه: @telegram'); }\nif (command === '/latest') { const channel=normalize(parts[0]); const hours=parts[1]===undefined?24:Number(parts[1]); const min_views=parts[2]===undefined?0:Number(parts[2]); if(parts.length<1||parts.length>3||!channel)return reply('فرمت درست: /latest @channel [hours] [min_views]'); if(!Number.isInteger(hours)||hours<1||hours>720)return reply('ساعت باید عددی بین ۱ تا ۷۲۰ باشد.'); if(!Number.isInteger(min_views)||min_views<0)return reply('حداقل بازدید باید عدد صحیح و نامنفی باشد.'); return [{json:{chat_id,user_id,action:'latest',channel_username:channel,hours,min_views}}]; }\nif (command === '/ask') { const question=parts.join(' ').trim(); return question.length>=3?[{json:{chat_id,user_id,action:'ask',question}}]:reply('پس از /ask یک سؤال روشن بنویسید.'); }\nif (command === '/alert') { const sub=(parts.shift()||'').toLowerCase(); if(sub==='list'&&!parts.length)return [{json:{chat_id,user_id,action:'alert_list'}}]; if(sub==='add'){const keyword=parts.join(' ').trim();return keyword.length>=2&&keyword.length<=80?[{json:{chat_id,user_id,action:'alert_add',keyword}}]:reply('فرمت درست: /alert add keyword (۲ تا ۸۰ نویسه)');} if(sub==='remove'&&parts.length===1&&/^[a-z0-9-]{6,64}$/i.test(parts[0]))return [{json:{chat_id,user_id,action:'alert_remove',alert_id:parts[0]}}]; return reply('فرمت درست: /alert add keyword | /alert list | /alert remove ALERT_ID'); }\nreturn reply('دستور شناخته نشد.\\n'+help);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -850,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000000004",
+      "name": "Parse Command"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "reply",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "add",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "add"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "remove",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "remove"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "latest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "latest"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "ask",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ask"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "digest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "digest"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "alert_add",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alert_add"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "alert_list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alert_list"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "alert_remove",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alert_remove"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        -620,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000000005",
+      "name": "Route Command"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "sendMessage",
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000).replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\") }}",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1500,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000000006",
+      "name": "Send Telegram Reply",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        -500
+      ],
+      "id": "00000000-0000-4000-8000-000000000007",
+      "name": "Subscription Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        -400
+      ],
+      "id": "00000000-0000-4000-8000-000000000008",
+      "name": "Subscription New?"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'این کانال قبلاً ثبت شده است: @'+p.channel_username}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -500
+      ],
+      "id": "00000000-0000-4000-8000-000000000009",
+      "name": "Duplicate Subscription Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{user_id:p.user_id,chat_id:p.chat_id,channel_username:p.channel_username,status:'active',added_at:new Date().toISOString(),last_checked_message_id:0}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -400
+      ],
+      "id": "00000000-0000-4000-8000-000000000010",
+      "name": "Prepare Subscription"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        -400
+      ],
+      "id": "00000000-0000-4000-8000-000000000011",
+      "name": "Insert Subscription"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'کانال @'+p.channel_username+' به پایش اضافه شد.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        -400
+      ],
+      "id": "00000000-0000-4000-8000-000000000012",
+      "name": "Added Reply"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        -280
+      ],
+      "id": "00000000-0000-4000-8000-000000000013",
+      "name": "Active Subscription Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        -180
+      ],
+      "id": "00000000-0000-4000-8000-000000000014",
+      "name": "Active Subscription Missing?"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{status:'inactive'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -280
+      ],
+      "id": "00000000-0000-4000-8000-000000000015",
+      "name": "Prepare Remove"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        -280
+      ],
+      "id": "00000000-0000-4000-8000-000000000016",
+      "name": "Deactivate Subscription"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'پایش @'+p.channel_username+' متوقف شد.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        -280
+      ],
+      "id": "00000000-0000-4000-8000-000000000017",
+      "name": "Removed Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'این کانال در فهرست فعال شما نیست.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -180
+      ],
+      "id": "00000000-0000-4000-8000-000000000018",
+      "name": "Missing Subscription Reply"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.user_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        -60
+      ],
+      "id": "00000000-0000-4000-8000-000000000019",
+      "name": "Get User Subscriptions",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const rows=($json.allowed_channels||[]); const body=rows.length?'کانال‌های فعال:\\n'+rows.map(ch=>'• @'+ch).join('\\n'):'هنوز کانالی ثبت نکرده‌اید.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        -60
+      ],
+      "id": "00000000-0000-4000-8000-000000000020",
+      "name": "Format Subscription List"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const allowed_channels=[...new Set($input.all().map(i=>String(i.json.channel_username||'').toLowerCase()).filter(Boolean))]; let scope_state=p.action; if(p.action==='latest')scope_state=allowed_channels.includes(String(p.channel_username||'').toLowerCase())?'latest_allowed':'latest_denied'; return [{json:{...p,allowed_channels,scope_state}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -180,
+        80
+      ],
+      "id": "00000000-0000-4000-8000-000000000042",
+      "name": "Prepare User Scope"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scope_state }}",
+                    "rightValue": "list",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scope_state }}",
+                    "rightValue": "latest_allowed",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "latest_allowed"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scope_state }}",
+                    "rightValue": "latest_denied",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "latest_denied"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scope_state }}",
+                    "rightValue": "ask",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "ask"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.scope_state }}",
+                    "rightValue": "digest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "digest"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        40,
+        80
+      ],
+      "id": "00000000-0000-4000-8000-000000000043",
+      "name": "Route User Scope"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'برای مشاهده این کانال ابتدا آن را با /add @'+p.channel_username+' به Watchlist خود اضافه کنید.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        80
+      ],
+      "id": "00000000-0000-4000-8000-000000000044",
+      "name": "Scope Denied Reply"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "channel_username",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.channel_username }}"
+            }
+          ]
+        },
+        "returnAll": true,
+        "orderBy": true,
+        "orderByColumn": "published_at",
+        "orderByDirection": "DESC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        80
+      ],
+      "id": "00000000-0000-4000-8000-000000000021",
+      "name": "Get Channel Messages",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const cutoff=Date.now()-p.hours*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff&&Number(r.views||0)>=p.min_views).slice(0,10); const body=rows.length?rows.map(r=>'• '+(r.summary||r.text||'[پیام بدون متن]').slice(0,240)+'\\n'+r.message_url+' — 👁 '+Number(r.views||0).toLocaleString('fa-IR')).join('\\n\\n'):'پیامی با این فیلتر پیدا نشد.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        80
+      ],
+      "id": "00000000-0000-4000-8000-000000000022",
+      "name": "Format Latest"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "returnAll": false,
+        "limit": 500,
+        "orderBy": true,
+        "orderByColumn": "published_at",
+        "orderByDirection": "DESC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        240
+      ],
+      "id": "00000000-0000-4000-8000-000000000023",
+      "name": "Get Recent Context",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const allowed=new Set(($('Prepare User Scope').first().json.allowed_channels||[]).map(x=>String(x).toLowerCase())); const digits=v=>String(v||'').replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))); const words={'یک':1,'دو':2,'سه':3,'چهار':4,'پنج':5,'شش':6,'هفت':7,'هشت':8,'نه':9,'ده':10,'بیست':20,'سی':30,'چهل':40,'پنجاه':50,'صد':100}; const num='(\\\\d{1,4}|یک|دو|سه|چهار|پنج|شش|هفت|هشت|نه|ده|بیست|سی|چهل|پنجاه|صد)'; const nv=v=>words[v]||Number(v)||null; const question=digits(String(p.question||'').replace(/مهن/g,'مهم')).trim(); const last=question.match(new RegExp('(?:آخرین\\\\s*)?'+num+'\\\\s*پیام(?:\\\\s*(?:اخیر|آخر))?')); const period=question.match(new RegExp(num+'\\\\s*(ساعت|روز|هفته|ماه)\\\\s*(?:اخیر|گذشته)')); const channel=question.match(/@([a-z][a-z0-9_]{3,31})/i); const views=question.match(/(?:حداقل|بیش از|بالای|بالاتر از)\\s*([0-9][0-9,._]*)\\s*(?:بازدید|ویو)/i); const mult={'ساعت':1,'روز':24,'هفته':168,'ماه':720}; const plan={task:/(چند\\s*تا|چند\\s*پیام|تعداد)/.test(question)?'count':/(خلاصه|جمع[‌ -]?بندی)/.test(question)?'summarize':'answer',last_n:last?Math.min(100,nv(last[1])):null,hours:period?Math.min(8760,nv(period[1])*mult[period[2]]):(/امروز/.test(question)?24:null),channel:channel?channel[1].toLowerCase():null,min_views:views?Number(views[1].replace(/[,._]/g,'')):0}; if(plan.channel&&!allowed.has(plan.channel))return [{json:{qa_state:'no_context',chat_id:p.chat_id,reply:'این کانال در Watchlist فعال شما نیست.'}}]; let rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&r.message_url&&allowed.has(String(r.channel_username||'').toLowerCase())).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at)); if(plan.hours){const cutoff=Date.now()-plan.hours*3600000;rows=rows.filter(r=>new Date(r.published_at).getTime()>=cutoff);} if(plan.channel)rows=rows.filter(r=>String(r.channel_username||'').toLowerCase()===plan.channel); if(plan.min_views)rows=rows.filter(r=>Number(r.views||0)>=plan.min_views); const filtered_count=rows.length; const cap=plan.last_n||(plan.hours||plan.channel||plan.min_views?100:40); rows=rows.slice(0,cap); if(!rows.length)return [{json:{qa_state:'no_context',chat_id:p.chat_id,reply:'پیامی مطابق فیلترهای سؤال در Watchlist شما پیدا نشد.'}}]; const context=rows.map((r,i)=>({id:i+1,channel:r.channel_username,text:(r.text||'').slice(0,600),summary:(r.summary||'').slice(0,400),topic:r.topic||'',published_at:r.published_at,views:Number(r.views||0),url:r.message_url})); const payload={question,plan,candidate_count:context.length,truncated:filtered_count>context.length,context}; return [{json:{qa_state:'call',chat_id:p.chat_id,question,plan,context,candidate_count:context.length,filtered_count,truncated:filtered_count>context.length,request:{model:$('Runtime Config').first().json.openrouter_model,temperature:0.1,reasoning:{effort:'none'},response_format:{type:'json_object'},messages:[{role:'system',content:'فقط از context پاسخ بده. فیلترهای plan قبلاً توسط برنامه اعمال شده‌اند. همه پیام‌های مرتبط با موضوع سؤال را در matched_source_ids برگردان و حداکثر ۸ منبع اصلی را در source_ids بده. برای task=count شمارش را حدس نزن؛ فقط شناسه همه موارد مرتبط را بده تا برنامه بشمارد. برای task=summarize یک خلاصه فارسی فشرده بساز. فقط JSON: {has_answer:boolean,answer:string,matched_source_ids:number[],source_ids:number[]}. شناسه خارج context نساز.'},{role:'user',content:JSON.stringify(payload)}]}}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        240
+      ],
+      "id": "00000000-0000-4000-8000-000000000024",
+      "name": "Build QA Request"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.qa_state }}",
+                    "rightValue": "call",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "call"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.qa_state }}",
+                    "rightValue": "no_context",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "no_context"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.3,
+      "position": [
+        140,
+        240
+      ],
+      "id": "00000000-0000-4000-8000-000000000025",
+      "name": "Route QA"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://openrouter.ai/api/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "specifyHeaders": "keypair",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Accept-Encoding",
+              "value": "identity"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.request }}",
+        "options": {
+          "timeout": 30000,
+          "response": {
+            "response": {
+              "neverError": true,
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [
+        380,
+        200
+      ],
+      "id": "00000000-0000-4000-8000-000000000026",
+      "name": "OpenRouter QA",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const req=$('Build QA Request').first().json; const question=req.question||String($('Parse Command').first().json.question||'').replace(/مهن/g,'مهم').trim(); const latest=/آخرین\\s+پیام/.test(question); const fallback=()=>{const first=req.context?.[0];if(latest&&first){const text=String(first.summary||first.text||'').trim().slice(0,1200);return [{json:{chat_id:req.chat_id,reply:'آخرین پیام درباره این موضوع است:\\n'+text+'\\n\\nمنبع:\\n'+first.url}}];}return [{json:{chat_id:req.chat_id,reply:$json.error?'سرویس هوش مصنوعی موقتاً پاسخ نداد؛ کمی بعد دوباره تلاش کنید.':'اطلاعات کافی در پیام‌های ذخیره‌شده وجود ندارد.'}}];}; if($json.error)return fallback(); const message=$json.choices?.[0]?.message||{}; let raw=message.content||message.reasoning||$json.output_text||''; if(Array.isArray(raw))raw=raw.map(x=>x?.text||x?.content||'').join(''); let out=typeof raw==='object'&&raw?raw:null; if(!out&&typeof raw==='string'){raw=raw.trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');try{out=JSON.parse(raw);}catch{const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a>=0&&b>a)try{out=JSON.parse(raw.slice(a,b+1));}catch{}}} if(!out)return fallback(); const valid=values=>[...new Set(Array.isArray(values)?values:[])].map(Number).filter(x=>Number.isInteger(x)&&req.context[x-1]); const matches=valid(out.matched_source_ids||out.source_ids); const sources=valid(out.source_ids||matches).slice(0,8); const links=sources.map(x=>req.context[x-1].url); const note=req.truncated?'\\n\\nتوجه: برای کنترل هزینه فقط '+req.candidate_count+' پیام جدیدتر بررسی شد.':''; if(req.plan?.task==='count'){const detail=matches.length&&out.answer?'\\n'+String(out.answer).slice(0,1800):'';return [{json:{chat_id:req.chat_id,reply:'تعداد پیام‌های مرتبط: '+matches.length+' از '+req.candidate_count+' پیام بررسی‌شده.'+detail+(links.length?'\\n\\nمنابع نمونه:\\n'+links.join('\\n'):'')+note}}];} if(req.plan?.task==='summarize'){if(!matches.length)return [{json:{chat_id:req.chat_id,reply:'در محدوده مشخص‌شده پیام مرتبطی با موضوع سؤال پیدا نشد.'+note}}];if(!out.answer)return fallback();return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+(links.length?'\\n\\nمنابع:\\n'+links.join('\\n'):'')+note}}];} if(!out.has_answer||!out.answer||!links.length)return fallback(); return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+'\\n\\nمنابع:\\n'+links.join('\\n')+note}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        620,
+        200
+      ],
+      "id": "00000000-0000-4000-8000-000000000027",
+      "name": "Format QA Reply"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "messages",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "returnAll": true,
+        "orderBy": true,
+        "orderByColumn": "published_at",
+        "orderByDirection": "DESC"
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        420
+      ],
+      "id": "00000000-0000-4000-8000-000000000028",
+      "name": "Get Digest Messages",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const allowed=new Set(($('Prepare User Scope').first().json.allowed_channels||[]).map(x=>String(x).toLowerCase())); const cutoff=Date.now()-24*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&allowed.has(String(r.channel_username||'').toLowerCase())&&new Date(r.published_at).getTime()>=cutoff).sort((a,b)=>Number(b.importance_score||0)-Number(a.importance_score||0)).slice(0,10); const body=rows.length?'خلاصه ۲۴ ساعت اخیر:\\n\\n'+rows.map(r=>'• ['+(r.topic||'عمومی')+'] '+(r.summary||r.text||'[بدون متن]').slice(0,260)+'\\n'+r.message_url).join('\\n\\n'):'در ۲۴ ساعت اخیر برای کانال‌های فعال شما پیامی ذخیره نشده است.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        420
+      ],
+      "id": "00000000-0000-4000-8000-000000000029",
+      "name": "Format On-demand Digest"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const alert_id=Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,10); return [{json:{alert_id,chat_id:p.chat_id,channel_username:'*',keyword:p.keyword,status:'active',created_at:new Date().toISOString()}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -380,
+        560
+      ],
+      "id": "00000000-0000-4000-8000-000000000030",
+      "name": "Prepare Alert"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "insert",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -100,
+        560
+      ],
+      "id": "00000000-0000-4000-8000-000000000031",
+      "name": "Insert Alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار «'+p.keyword+'» ساخته شد. شناسه: '+$json.alert_id}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        140,
+        560
+      ],
+      "id": "00000000-0000-4000-8000-000000000032",
+      "name": "Alert Added Reply"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "chat_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.chat_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        700
+      ],
+      "id": "00000000-0000-4000-8000-000000000033",
+      "name": "Get User Alerts",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; const rows=$input.all().map(i=>i.json).filter(r=>r.alert_id); return [{json:{chat_id:p.chat_id,reply:rows.length?'هشدارها:\\n'+rows.map(r=>'• '+r.alert_id+' — '+r.keyword).join('\\n'):'هشدار فعالی ندارید.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        700
+      ],
+      "id": "00000000-0000-4000-8000-000000000034",
+      "name": "Format Alert List"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "alert_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.alert_id }}"
+            },
+            {
+              "keyName": "chat_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.chat_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        840
+      ],
+      "id": "00000000-0000-4000-8000-000000000035",
+      "name": "Alert Exists?"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "rowNotExists",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "alert_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.alert_id }}"
+            },
+            {
+              "keyName": "chat_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.chat_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        -380,
+        940
+      ],
+      "id": "00000000-0000-4000-8000-000000000036",
+      "name": "Alert Missing?"
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{json:{status:'inactive'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        840
+      ],
+      "id": "00000000-0000-4000-8000-000000000037",
+      "name": "Prepare Alert Remove"
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "update",
+        "dataTableId": {
+          "__rl": true,
+          "value": "alerts",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "alert_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.alert_id }}"
+            },
+            {
+              "keyName": "chat_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Parse Command').first().json.chat_id }}"
+            },
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        140,
+        840
+      ],
+      "id": "00000000-0000-4000-8000-000000000038",
+      "name": "Deactivate Alert"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار '+p.alert_id+' حذف شد.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        380,
+        840
+      ],
+      "id": "00000000-0000-4000-8000-000000000039",
+      "name": "Alert Removed Reply"
+    },
+    {
+      "parameters": {
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار فعالی با این شناسه پیدا نشد.'}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -100,
+        940
+      ],
+      "id": "00000000-0000-4000-8000-000000000040",
+      "name": "Alert Missing Reply"
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Runtime Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Runtime Config": {
+      "main": [
+        [
+          {
+            "node": "Parse Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Command": {
+      "main": [
+        [
+          {
+            "node": "Route Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Command": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Subscription Exists?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Subscription New?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Active Subscription Exists?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Active Subscription Missing?",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Subscriptions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prepare Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Alert Exists?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Alert Missing?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subscription Exists?": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Subscription Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Subscription Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Subscription New?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Subscription": {
+      "main": [
+        [
+          {
+            "node": "Insert Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Subscription": {
+      "main": [
+        [
+          {
+            "node": "Added Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Added Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Subscription Exists?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Remove",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Remove": {
+      "main": [
+        [
+          {
+            "node": "Deactivate Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate Subscription": {
+      "main": [
+        [
+          {
+            "node": "Removed Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Removed Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Active Subscription Missing?": {
+      "main": [
+        [
+          {
+            "node": "Missing Subscription Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Missing Subscription Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Prepare User Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Subscription List": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Channel Messages": {
+      "main": [
+        [
+          {
+            "node": "Format Latest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Latest": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Recent Context": {
+      "main": [
+        [
+          {
+            "node": "Build QA Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build QA Request": {
+      "main": [
+        [
+          {
+            "node": "Route QA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route QA": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter QA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter QA": {
+      "main": [
+        [
+          {
+            "node": "Format QA Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format QA Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Digest Messages": {
+      "main": [
+        [
+          {
+            "node": "Format On-demand Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format On-demand Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert": {
+      "main": [
+        [
+          {
+            "node": "Insert Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Added Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Added Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Alerts": {
+      "main": [
+        [
+          {
+            "node": "Format Alert List",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Alert List": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Exists?": {
+      "main": [
+        [
+          {
+            "node": "Prepare Alert Remove",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Alert Remove": {
+      "main": [
+        [
+          {
+            "node": "Deactivate Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Deactivate Alert": {
+      "main": [
+        [
+          {
+            "node": "Alert Removed Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Removed Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Missing?": {
+      "main": [
+        [
+          {
+            "node": "Alert Missing Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Missing Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare User Scope": {
+      "main": [
+        [
+          {
+            "node": "Route User Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route User Scope": {
+      "main": [
+        [
+          {
+            "node": "Format Subscription List",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Channel Messages",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Scope Denied Reply",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Recent Context",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Digest Messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scope Denied Reply": {
+      "main": [
+        [
+          {
+            "node": "Send Telegram Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "Asia/Tehran",
+    "saveDataErrorExecution": "none",
+    "saveDataSuccessExecution": "none"
+  },
+  "versionId": "00000000-0000-4000-8000-000000000041",
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
