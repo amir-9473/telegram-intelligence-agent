@@ -102,7 +102,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const cutoff=Date.now()-24*3600000;const groups={};for(const i of $input.all()){const x=i.json;(groups[x.chat_id]||=[]).push(x);}const out=[];for(const [chat_id,rows0] of Object.entries(groups)){const rows=rows0.filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff).sort((a,b)=>Number(b.importance_score||0)-Number(a.importance_score||0)).slice(0,10);const reply=rows.length?'☀️ خلاصه روزانه\\n\\n'+rows.map(r=>'• ['+(r.topic||'عمومی')+'] '+(r.summary||r.text||'[بدون متن]').slice(0,250)+'\\n'+r.message_url).join('\\n\\n'):'در ۲۴ ساعت اخیر پیام تازه‌ای برای کانال‌های شما ثبت نشده است.';out.push({json:{chat_id,reply}});}return out;"
+        "jsCode": "const cutoff=Date.now()-24*3600000;const groups={};for(const i of $input.all()){const x=i.json;(groups[x.chat_id]||=[]).push(x);}const out=[];for(const [chat_id,rows0] of Object.entries(groups)){const rows=rows0.filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff).sort((a,b)=>Number(b.importance_score||0)-Number(a.importance_score||0)).slice(0,10);const reply=rows.length?'Daily digest\\n\\n'+rows.map(r=>'- ['+(r.topic||'General')+'] '+(r.summary||r.text||'[Post without text]').slice(0,250)+'\\n'+r.message_url).join('\\n\\n'):'No new posts were stored for your channels in the last 24 hours.';out.push({json:{chat_id,reply}});}return out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -118,7 +118,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $json.chat_id }}",
-        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000) }}",
+        "text": "={{ String($json.reply || \"Internal error\").slice(0, 4000) }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -196,7 +196,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "none",
+    "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000003007",

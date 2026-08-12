@@ -221,12 +221,12 @@
     },
     {
       "parameters": {
-        "jsCode": "const alerts=$items('Get Active Alerts').map(i=>i.json).filter(x=>x.alert_id);const msgs=$items('Get Candidate Messages').map(i=>i.json);const allowed=new Set($input.all().map(i=>i.json).filter(s=>s.status==='active'&&s.chat_id&&s.channel_username).map(s=>String(s.chat_id)+':'+String(s.channel_username).toLowerCase()));const out=[];for(const a of alerts)for(const m of msgs){const channel=String(m.channel_username||'').toLowerCase();if(!allowed.has(String(a.chat_id)+':'+channel))continue;if(a.channel_username&&a.channel_username!=='*'&&String(a.channel_username).toLowerCase()!==channel)continue;if(!String(m.text||'').toLocaleLowerCase('fa').includes(String(a.keyword||'').toLocaleLowerCase('fa')))continue;out.push({json:{delivery_key:a.alert_id+':'+channel+':'+m.message_id,alert_id:a.alert_id,chat_id:String(a.chat_id),channel_username:channel,message_id:m.message_id,keyword:a.keyword,message_url:m.message_url,summary:m.summary||String(m.text||'').slice(0,240),status:'pending',created_at:new Date().toISOString()}});}return out;"
+        "jsCode": "const alerts=$input.all().map(i=>i.json).filter(x=>x.alert_id);const msgs=$items('Get Candidate Messages').map(i=>i.json);const out=[];for(const a of alerts)for(const m of msgs){if(a.channel_username&&a.channel_username!=='*'&&a.channel_username!==m.channel_username)continue;if(!String(m.text||'').toLocaleLowerCase('fa').includes(String(a.keyword||'').toLocaleLowerCase('fa')))continue;out.push({json:{delivery_key:a.alert_id+':'+m.channel_username+':'+m.message_id,alert_id:a.alert_id,chat_id:String(a.chat_id),channel_username:m.channel_username,message_id:m.message_id,keyword:a.keyword,message_url:m.message_url,summary:m.summary||String(m.text||'').slice(0,240),status:'pending',created_at:new Date().toISOString()}});}return out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        940,
+        820,
         0
       ],
       "id": "00000000-0000-4000-8000-000000002010",
@@ -294,7 +294,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "return {json:{chat_id:String($json.chat_id),reply:'🚨 هشدار «'+$json.keyword+'» در @'+$json.channel_username+'\\n'+($json.summary||'پیام جدید مرتبط')+'\\n'+$json.message_url}};"
+        "jsCode": "return {json:{chat_id:String($json.chat_id),reply:'Keyword alert: '+$json.keyword+' in @'+$json.channel_username+'\\n'+($json.summary||'New matching post')+'\\n'+$json.message_url}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -310,7 +310,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $json.chat_id }}",
-        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000) }}",
+        "text": "={{ String($json.reply || \"Internal error\").slice(0, 4000) }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -324,38 +324,6 @@
       "id": "00000000-0000-4000-8000-000000002014",
       "name": "Send Alert",
       "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "resource": "row",
-        "operation": "get",
-        "dataTableId": {
-          "__rl": true,
-          "value": "subscriptions",
-          "mode": "name"
-        },
-        "matchType": "allConditions",
-        "filters": {
-          "conditions": [
-            {
-              "keyName": "status",
-              "condition": "eq",
-              "keyValue": "active"
-            }
-          ]
-        },
-        "returnAll": true
-      },
-      "type": "n8n-nodes-base.dataTable",
-      "typeVersion": 1.1,
-      "position": [
-        700,
-        120
-      ],
-      "id": "00000000-0000-4000-8000-000000002016",
-      "name": "Get Alert Subscriptions",
-      "executeOnce": true,
-      "alwaysOutputData": true
     }
   ],
   "connections": {
@@ -434,7 +402,7 @@
       "main": [
         [
           {
-            "node": "Get Alert Subscriptions",
+            "node": "Match Alerts",
             "type": "main",
             "index": 0
           }
@@ -484,17 +452,6 @@
           }
         ]
       ]
-    },
-    "Get Alert Subscriptions": {
-      "main": [
-        [
-          {
-            "node": "Match Alerts",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "pinData": {},
@@ -502,7 +459,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "none",
+    "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000002015",

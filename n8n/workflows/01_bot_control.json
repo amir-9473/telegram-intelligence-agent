@@ -43,7 +43,7 @@
     },
     {
       "parameters": {
-        "jsCode": "\nconst raw = String($json.message?.text || '').trim();\nconst chat_id = String($json.message?.chat?.id || '');\nconst user_id = String($json.message?.from?.id || $json.message?.chat?.id || '');\nconst parts = raw.split(/\\s+/); const command = (parts.shift() || '').split('@')[0].toLowerCase();\nconst help = 'دستورها: /add @channel، /remove @channel، /list، /latest @channel [hours] [min_views]، /ask سؤال، /digest، /alert add keyword، /alert list، /alert remove ALERT_ID';\nconst normalize = (v) => { const u=String(v||'').trim().replace(/^https?:\\/\\/t\\.me\\/(?:s\\/)?/i,'').replace(/^@/,'').replace(/\\/$/,'').toLowerCase(); return /^[a-z][a-z0-9_]{3,31}$/.test(u)?u:null; };\nconst reply = (text) => [{json:{chat_id,user_id,action:'reply',reply:text}}];\nif (command === '/start') return reply('سلام! من کانال‌های عمومی تلگرام را پایش می‌کنم.\\n\\n'+help);\nif (command === '/help') return reply(help);\nif (command === '/list') return parts.length?reply('فرمت درست: /list'):[{json:{chat_id,user_id,action:'list'}}];\nif (command === '/digest') return parts.length?reply('فرمت درست: /digest'):[{json:{chat_id,user_id,action:'digest'}}];\nif (command === '/add' || command === '/remove') { const channel=parts.length===1?normalize(parts[0]):null; return channel?[{json:{chat_id,user_id,action:command.slice(1),channel_username:channel}}]:reply('نام کانال معتبر نیست؛ نمونه: @telegram'); }\nif (command === '/latest') { const channel=normalize(parts[0]); const hours=parts[1]===undefined?24:Number(parts[1]); const min_views=parts[2]===undefined?0:Number(parts[2]); if(parts.length<1||parts.length>3||!channel)return reply('فرمت درست: /latest @channel [hours] [min_views]'); if(!Number.isInteger(hours)||hours<1||hours>720)return reply('ساعت باید عددی بین ۱ تا ۷۲۰ باشد.'); if(!Number.isInteger(min_views)||min_views<0)return reply('حداقل بازدید باید عدد صحیح و نامنفی باشد.'); return [{json:{chat_id,user_id,action:'latest',channel_username:channel,hours,min_views}}]; }\nif (command === '/ask') { const question=parts.join(' ').trim(); return question.length>=3?[{json:{chat_id,user_id,action:'ask',question}}]:reply('پس از /ask یک سؤال روشن بنویسید.'); }\nif (command === '/alert') { const sub=(parts.shift()||'').toLowerCase(); if(sub==='list'&&!parts.length)return [{json:{chat_id,user_id,action:'alert_list'}}]; if(sub==='add'){const keyword=parts.join(' ').trim();return keyword.length>=2&&keyword.length<=80?[{json:{chat_id,user_id,action:'alert_add',keyword}}]:reply('فرمت درست: /alert add keyword (۲ تا ۸۰ نویسه)');} if(sub==='remove'&&parts.length===1&&/^[a-z0-9-]{6,64}$/i.test(parts[0]))return [{json:{chat_id,user_id,action:'alert_remove',alert_id:parts[0]}}]; return reply('فرمت درست: /alert add keyword | /alert list | /alert remove ALERT_ID'); }\nreturn reply('دستور شناخته نشد.\\n'+help);"
+        "jsCode": "\nconst raw = String($json.message?.text || '').trim();\nconst chat_id = String($json.message?.chat?.id || '');\nconst user_id = String($json.message?.from?.id || $json.message?.chat?.id || '');\nconst parts = raw.split(/\\s+/); const command = (parts.shift() || '').split('@')[0].toLowerCase();\nconst help = \"Welcome to Telegram Intelligence Agent!\\n\\nThis bot monitors public Telegram channels and summarizes important posts.\\n\\nCommands:\\n\\n/add @channel\\nAdd a public channel\\n\\n/remove @channel\\nStop monitoring a channel\\n\\n/list\\nShow active channels\\n\\n/latest @channel [hours] [min_views]\\nShow recent posts\\n\\n/ask your question\\nAsk about collected posts\\n\\n/digest\\nGet the latest 24-hour digest\\n\\n/alert add keyword\\nCreate a keyword alert\\n\\n/alert list\\nShow your alerts\\n\\n/alert remove ALERT_ID\\nRemove an alert\";\nconst normalize = (v) => { const u=String(v||'').trim().replace(/^https?:\\/\\/t\\.me\\/(?:s\\/)?/i,'').replace(/^@/,'').replace(/\\/$/,'').toLowerCase(); return /^[a-z][a-z0-9_]{3,31}$/.test(u)?u:null; };\nconst reply = (text) => [{json:{chat_id,user_id,action:'reply',reply:text}}];\nif (command === '/start') return reply(help);\nif (command === '/help') return reply(help);\nif (command === '/list') return parts.length?reply('Correct format: /list'):[{json:{chat_id,user_id,action:'list'}}];\nif (command === '/digest') return parts.length?reply('Correct format: /digest'):[{json:{chat_id,user_id,action:'digest'}}];\nif (command === '/add' || command === '/remove') { const channel=parts.length===1?normalize(parts[0]):null; return channel?[{json:{chat_id,user_id,action:command.slice(1),channel_username:channel}}]:reply('Invalid public channel username. Example: @telegram'); }\nif (command === '/latest') { const channel=normalize(parts[0]); const hours=parts[1]===undefined?24:Number(parts[1]); const min_views=parts[2]===undefined?0:Number(parts[2]); if(parts.length<1||parts.length>3||!channel)return reply('Correct format: /latest @channel [hours] [min_views]'); if(!Number.isInteger(hours)||hours<1||hours>720)return reply('Hours must be an integer between 1 and 720.'); if(!Number.isInteger(min_views)||min_views<0)return reply('Minimum views must be a non-negative integer.'); return [{json:{chat_id,user_id,action:'latest',channel_username:channel,hours,min_views}}]; }\nif (command === '/ask') { const question=parts.join(' ').trim(); return question.length>=3?[{json:{chat_id,user_id,action:'ask',question}}]:reply('Write a clear question after /ask.'); }\nif (command === '/alert') { const sub=(parts.shift()||'').toLowerCase(); if(sub==='list'&&!parts.length)return [{json:{chat_id,user_id,action:'alert_list'}}]; if(sub==='add'){const keyword=parts.join(' ').trim();return keyword.length>=2&&keyword.length<=80?[{json:{chat_id,user_id,action:'alert_add',keyword}}]:reply('Correct format: /alert add keyword (2 to 80 characters)');} if(sub==='remove'&&parts.length===1&&/^[a-z0-9-]{6,64}$/i.test(parts[0]))return [{json:{chat_id,user_id,action:'alert_remove',alert_id:parts[0]}}]; return reply('Correct format: /alert add keyword | /alert list | /alert remove ALERT_ID'); }\nreturn reply(help);"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -306,7 +306,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $json.chat_id }}",
-        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000).replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\") }}",
+        "text": "={{ String($json.reply || \"Internal error\").slice(0, 4000).replace(/&/g, \"&amp;\").replace(/</g, \"&lt;\").replace(/>/g, \"&gt;\") }}",
         "additionalFields": {
           "appendAttribution": false,
           "parse_mode": "HTML"
@@ -402,7 +402,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'این کانال قبلاً ثبت شده است: @'+p.channel_username}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'This channel is already active: @'+p.channel_username}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -457,7 +457,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'کانال @'+p.channel_username+' به پایش اضافه شد.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'Channel @'+p.channel_username+' was added to monitoring.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -609,7 +609,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'پایش @'+p.channel_username+' متوقف شد.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'Monitoring stopped for @'+p.channel_username+'.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -622,7 +622,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'این کانال در فهرست فعال شما نیست.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'This channel is not in your active watchlist.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -671,7 +671,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const rows=($json.allowed_channels||[]); const body=rows.length?'کانال‌های فعال:\\n'+rows.map(ch=>'• @'+ch).join('\\n'):'هنوز کانالی ثبت نکرده‌اید.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+        "jsCode": "const p=$('Parse Command').first().json; const rows=$input.all().map(i=>i.json).filter(r=>r.channel_username); const body=rows.length?'Active channels:\\n'+rows.map(r=>'- @'+r.channel_username).join('\\n'):'You have no active channels.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -681,164 +681,6 @@
       ],
       "id": "00000000-0000-4000-8000-000000000020",
       "name": "Format Subscription List"
-    },
-    {
-      "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const allowed_channels=[...new Set($input.all().map(i=>String(i.json.channel_username||'').toLowerCase()).filter(Boolean))]; let scope_state=p.action; if(p.action==='latest')scope_state=allowed_channels.includes(String(p.channel_username||'').toLowerCase())?'latest_allowed':'latest_denied'; return [{json:{...p,allowed_channels,scope_state}}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -180,
-        80
-      ],
-      "id": "00000000-0000-4000-8000-000000000042",
-      "name": "Prepare User Scope"
-    },
-    {
-      "parameters": {
-        "rules": {
-          "values": [
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.scope_state }}",
-                    "rightValue": "list",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "list"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.scope_state }}",
-                    "rightValue": "latest_allowed",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "latest_allowed"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.scope_state }}",
-                    "rightValue": "latest_denied",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "latest_denied"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.scope_state }}",
-                    "rightValue": "ask",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "ask"
-            },
-            {
-              "conditions": {
-                "options": {
-                  "caseSensitive": true,
-                  "leftValue": "",
-                  "typeValidation": "strict",
-                  "version": 2
-                },
-                "conditions": [
-                  {
-                    "leftValue": "={{ $json.scope_state }}",
-                    "rightValue": "digest",
-                    "operator": {
-                      "type": "string",
-                      "operation": "equals"
-                    }
-                  }
-                ],
-                "combinator": "and"
-              },
-              "renameOutput": true,
-              "outputKey": "digest"
-            }
-          ]
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.switch",
-      "typeVersion": 3.3,
-      "position": [
-        40,
-        80
-      ],
-      "id": "00000000-0000-4000-8000-000000000043",
-      "name": "Route User Scope"
-    },
-    {
-      "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'برای مشاهده این کانال ابتدا آن را با /add @'+p.channel_username+' به Watchlist خود اضافه کنید.'}}];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        260,
-        80
-      ],
-      "id": "00000000-0000-4000-8000-000000000044",
-      "name": "Scope Denied Reply"
     },
     {
       "parameters": {
@@ -876,7 +718,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const cutoff=Date.now()-p.hours*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff&&Number(r.views||0)>=p.min_views).slice(0,10); const body=rows.length?rows.map(r=>'• '+(r.summary||r.text||'[پیام بدون متن]').slice(0,240)+'\\n'+r.message_url+' — 👁 '+Number(r.views||0).toLocaleString('fa-IR')).join('\\n\\n'):'پیامی با این فیلتر پیدا نشد.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+        "jsCode": "const p=$('Parse Command').first().json; const cutoff=Date.now()-p.hours*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff&&Number(r.views||0)>=p.min_views).slice(0,10); const body=rows.length?rows.map(r=>'- '+(r.summary||r.text||'[Post without text]').slice(0,240)+'\\n'+r.message_url+' - Views: '+Number(r.views||0).toLocaleString('en-US')).join('\\n\\n'):'No posts matched this filter.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -915,7 +757,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const allowed=new Set(($('Prepare User Scope').first().json.allowed_channels||[]).map(x=>String(x).toLowerCase())); const digits=v=>String(v||'').replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))); const words={'یک':1,'دو':2,'سه':3,'چهار':4,'پنج':5,'شش':6,'هفت':7,'هشت':8,'نه':9,'ده':10,'بیست':20,'سی':30,'چهل':40,'پنجاه':50,'صد':100}; const num='(\\\\d{1,4}|یک|دو|سه|چهار|پنج|شش|هفت|هشت|نه|ده|بیست|سی|چهل|پنجاه|صد)'; const nv=v=>words[v]||Number(v)||null; const question=digits(String(p.question||'').replace(/مهن/g,'مهم')).trim(); const last=question.match(new RegExp('(?:آخرین\\\\s*)?'+num+'\\\\s*پیام(?:\\\\s*(?:اخیر|آخر))?')); const period=question.match(new RegExp(num+'\\\\s*(ساعت|روز|هفته|ماه)\\\\s*(?:اخیر|گذشته)')); const channel=question.match(/@([a-z][a-z0-9_]{3,31})/i); const views=question.match(/(?:حداقل|بیش از|بالای|بالاتر از)\\s*([0-9][0-9,._]*)\\s*(?:بازدید|ویو)/i); const mult={'ساعت':1,'روز':24,'هفته':168,'ماه':720}; const plan={task:/(چند\\s*تا|چند\\s*پیام|تعداد)/.test(question)?'count':/(خلاصه|جمع[‌ -]?بندی)/.test(question)?'summarize':'answer',last_n:last?Math.min(100,nv(last[1])):null,hours:period?Math.min(8760,nv(period[1])*mult[period[2]]):(/امروز/.test(question)?24:null),channel:channel?channel[1].toLowerCase():null,min_views:views?Number(views[1].replace(/[,._]/g,'')):0}; if(plan.channel&&!allowed.has(plan.channel))return [{json:{qa_state:'no_context',chat_id:p.chat_id,reply:'این کانال در Watchlist فعال شما نیست.'}}]; let rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&r.message_url&&allowed.has(String(r.channel_username||'').toLowerCase())).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at)); if(plan.hours){const cutoff=Date.now()-plan.hours*3600000;rows=rows.filter(r=>new Date(r.published_at).getTime()>=cutoff);} if(plan.channel)rows=rows.filter(r=>String(r.channel_username||'').toLowerCase()===plan.channel); if(plan.min_views)rows=rows.filter(r=>Number(r.views||0)>=plan.min_views); const filtered_count=rows.length; const cap=plan.last_n||(plan.hours||plan.channel||plan.min_views?100:40); rows=rows.slice(0,cap); if(!rows.length)return [{json:{qa_state:'no_context',chat_id:p.chat_id,reply:'پیامی مطابق فیلترهای سؤال در Watchlist شما پیدا نشد.'}}]; const context=rows.map((r,i)=>({id:i+1,channel:r.channel_username,text:(r.text||'').slice(0,600),summary:(r.summary||'').slice(0,400),topic:r.topic||'',published_at:r.published_at,views:Number(r.views||0),url:r.message_url})); const payload={question,plan,candidate_count:context.length,truncated:filtered_count>context.length,context}; return [{json:{qa_state:'call',chat_id:p.chat_id,question,plan,context,candidate_count:context.length,filtered_count,truncated:filtered_count>context.length,request:{model:$('Runtime Config').first().json.openrouter_model,temperature:0.1,reasoning:{effort:'none'},response_format:{type:'json_object'},messages:[{role:'system',content:'فقط از context پاسخ بده. فیلترهای plan قبلاً توسط برنامه اعمال شده‌اند. همه پیام‌های مرتبط با موضوع سؤال را در matched_source_ids برگردان و حداکثر ۸ منبع اصلی را در source_ids بده. برای task=count شمارش را حدس نزن؛ فقط شناسه همه موارد مرتبط را بده تا برنامه بشمارد. برای task=summarize یک خلاصه فارسی فشرده بساز. فقط JSON: {has_answer:boolean,answer:string,matched_source_ids:number[],source_ids:number[]}. شناسه خارج context نساز.'},{role:'user',content:JSON.stringify(payload)}]}}}];"
+        "jsCode": "const p=$('Parse Command').first().json; const digits=v=>String(v||'').replace(/[\\u06f0-\\u06f9]/g,d=>String('\\u06f0\\u06f1\\u06f2\\u06f3\\u06f4\\u06f5\\u06f6\\u06f7\\u06f8\\u06f9'.indexOf(d))).replace(/[\\u0660-\\u0669]/g,d=>String('\\u0660\\u0661\\u0662\\u0663\\u0664\\u0665\\u0666\\u0667\\u0668\\u0669'.indexOf(d))); const words={'\\u06cc\\u06a9':1,'\\u062f\\u0648':2,'\\u0633\\u0647':3,'\\u0686\\u0647\\u0627\\u0631':4,'\\u067e\\u0646\\u062c':5,'\\u0634\\u0634':6,'\\u0647\\u0641\\u062a':7,'\\u0647\\u0634\\u062a':8,'\\u0646\\u0647':9,'\\u062f\\u0647':10,'\\u0628\\u06cc\\u0633\\u062a':20,'\\u0633\\u06cc':30,'\\u0686\\u0647\\u0644':40,'\\u067e\\u0646\\u062c\\u0627\\u0647':50,'\\u0635\\u062f':100}; const num='(\\\\d{1,4}|\\u06cc\\u06a9|\\u062f\\u0648|\\u0633\\u0647|\\u0686\\u0647\\u0627\\u0631|\\u067e\\u0646\\u062c|\\u0634\\u0634|\\u0647\\u0641\\u062a|\\u0647\\u0634\\u062a|\\u0646\\u0647|\\u062f\\u0647|\\u0628\\u06cc\\u0633\\u062a|\\u0633\\u06cc|\\u0686\\u0647\\u0644|\\u067e\\u0646\\u062c\\u0627\\u0647|\\u0635\\u062f)'; const nv=v=>words[v]||Number(v)||null; const question=digits(String(p.question||'').replace(/\\u0645\\u0647\\u0646/g,'\\u0645\\u0647\\u0645')).trim(); const last=question.match(new RegExp('(?:\\u0622\\u062e\\u0631\\u06cc\\u0646\\\\s*)?'+num+'\\\\s*\\u067e\\u06cc\\u0627\\u0645(?:\\\\s*(?:\\u0627\\u062e\\u06cc\\u0631|\\u0622\\u062e\\u0631))?')); const period=question.match(new RegExp(num+'\\\\s*(\\u0633\\u0627\\u0639\\u062a|\\u0631\\u0648\\u0632|\\u0647\\u0641\\u062a\\u0647|\\u0645\\u0627\\u0647)\\\\s*(?:\\u0627\\u062e\\u06cc\\u0631|\\u06af\\u0630\\u0634\\u062a\\u0647)')); const channel=question.match(/@([a-z][a-z0-9_]{3,31})/i); const views=question.match(/(?:\\u062d\\u062f\\u0627\\u0642\\u0644|\\u0628\\u06cc\\u0634 \\u0627\\u0632|\\u0628\\u0627\\u0644\\u0627\\u06cc|\\u0628\\u0627\\u0644\\u0627\\u062a\\u0631 \\u0627\\u0632)\\s*([0-9][0-9,._]*)\\s*(?:\\u0628\\u0627\\u0632\\u062f\\u06cc\\u062f|\\u0648\\u06cc\\u0648)/i); const mult={'\\u0633\\u0627\\u0639\\u062a':1,'\\u0631\\u0648\\u0632':24,'\\u0647\\u0641\\u062a\\u0647':168,'\\u0645\\u0627\\u0647':720}; const plan={task:/(\\u0686\\u0646\\u062f\\s*\\u062a\\u0627|\\u0686\\u0646\\u062f\\s*\\u067e\\u06cc\\u0627\\u0645|\\u062a\\u0639\\u062f\\u0627\\u062f)/.test(question)?'count':/(\\u062e\\u0644\\u0627\\u0635\\u0647|\\u062c\\u0645\\u0639[\\u200c -]?\\u0628\\u0646\\u062f\\u06cc)/.test(question)?'summarize':'answer',last_n:last?Math.min(100,nv(last[1])):null,hours:period?Math.min(8760,nv(period[1])*mult[period[2]]):(/\\u0627\\u0645\\u0631\\u0648\\u0632/.test(question)?24:null),channel:channel?channel[1].toLowerCase():null,min_views:views?Number(views[1].replace(/[,._]/g,'')):0}; let rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&r.message_url).sort((a,b)=>new Date(b.published_at)-new Date(a.published_at)); if(plan.hours){const cutoff=Date.now()-plan.hours*3600000;rows=rows.filter(r=>new Date(r.published_at).getTime()>=cutoff);} if(plan.channel)rows=rows.filter(r=>String(r.channel_username||'').toLowerCase()===plan.channel); if(plan.min_views)rows=rows.filter(r=>Number(r.views||0)>=plan.min_views); const filtered_count=rows.length; const cap=plan.last_n||(plan.hours||plan.channel||plan.min_views?100:40); rows=rows.slice(0,cap); if(!rows.length)return [{json:{qa_state:'no_context',chat_id:p.chat_id,reply:'No stored posts matched the question filters.'}}]; const context=rows.map((r,i)=>({id:i+1,channel:r.channel_username,text:(r.text||'').slice(0,600),summary:(r.summary||'').slice(0,400),topic:r.topic||'',published_at:r.published_at,views:Number(r.views||0),url:r.message_url})); const payload={question,plan,candidate_count:context.length,truncated:filtered_count>context.length,context}; return [{json:{qa_state:'call',chat_id:p.chat_id,question,plan,context,candidate_count:context.length,filtered_count,truncated:filtered_count>context.length,request:{model:$('Runtime Config').first().json.openrouter_model,temperature:0.1,reasoning:{effort:'none'},response_format:{type:'json_object'},messages:[{role:'system',content:'\\u0641\\u0642\\u0637 \\u0627\\u0632 context \\u067e\\u0627\\u0633\\u062e \\u0628\\u062f\\u0647. \\u0641\\u06cc\\u0644\\u062a\\u0631\\u0647\\u0627\\u06cc plan \\u0642\\u0628\\u0644\\u0627\\u064b \\u062a\\u0648\\u0633\\u0637 \\u0628\\u0631\\u0646\\u0627\\u0645\\u0647 \\u0627\\u0639\\u0645\\u0627\\u0644 \\u0634\\u062f\\u0647\\u200c\\u0627\\u0646\\u062f. \\u0647\\u0645\\u0647 \\u067e\\u06cc\\u0627\\u0645\\u200c\\u0647\\u0627\\u06cc \\u0645\\u0631\\u062a\\u0628\\u0637 \\u0628\\u0627 \\u0645\\u0648\\u0636\\u0648\\u0639 \\u0633\\u0624\\u0627\\u0644 \\u0631\\u0627 \\u062f\\u0631 matched_source_ids \\u0628\\u0631\\u06af\\u0631\\u062f\\u0627\\u0646 \\u0648 \\u062d\\u062f\\u0627\\u06a9\\u062b\\u0631 \\u06f8 \\u0645\\u0646\\u0628\\u0639 \\u0627\\u0635\\u0644\\u06cc \\u0631\\u0627 \\u062f\\u0631 source_ids \\u0628\\u062f\\u0647. \\u0628\\u0631\\u0627\\u06cc task=count \\u0634\\u0645\\u0627\\u0631\\u0634 \\u0631\\u0627 \\u062d\\u062f\\u0633 \\u0646\\u0632\\u0646\\u061b \\u0641\\u0642\\u0637 \\u0634\\u0646\\u0627\\u0633\\u0647 \\u0647\\u0645\\u0647 \\u0645\\u0648\\u0627\\u0631\\u062f \\u0645\\u0631\\u062a\\u0628\\u0637 \\u0631\\u0627 \\u0628\\u062f\\u0647 \\u062a\\u0627 \\u0628\\u0631\\u0646\\u0627\\u0645\\u0647 \\u0628\\u0634\\u0645\\u0627\\u0631\\u062f. \\u0628\\u0631\\u0627\\u06cc task=summarize \\u06cc\\u06a9 \\u062e\\u0644\\u0627\\u0635\\u0647 \\u0641\\u0627\\u0631\\u0633\\u06cc \\u0641\\u0634\\u0631\\u062f\\u0647 \\u0628\\u0633\\u0627\\u0632. \\u0641\\u0642\\u0637 JSON: {has_answer:boolean,answer:string,matched_source_ids:number[],source_ids:number[]}. \\u0634\\u0646\\u0627\\u0633\\u0647 \\u062e\\u0627\\u0631\\u062c context \\u0646\\u0633\\u0627\\u0632.'},{role:'user',content:JSON.stringify(payload)}]}}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1031,7 +873,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const req=$('Build QA Request').first().json; const question=req.question||String($('Parse Command').first().json.question||'').replace(/مهن/g,'مهم').trim(); const latest=/آخرین\\s+پیام/.test(question); const fallback=()=>{const first=req.context?.[0];if(latest&&first){const text=String(first.summary||first.text||'').trim().slice(0,1200);return [{json:{chat_id:req.chat_id,reply:'آخرین پیام درباره این موضوع است:\\n'+text+'\\n\\nمنبع:\\n'+first.url}}];}return [{json:{chat_id:req.chat_id,reply:$json.error?'سرویس هوش مصنوعی موقتاً پاسخ نداد؛ کمی بعد دوباره تلاش کنید.':'اطلاعات کافی در پیام‌های ذخیره‌شده وجود ندارد.'}}];}; if($json.error)return fallback(); const message=$json.choices?.[0]?.message||{}; let raw=message.content||message.reasoning||$json.output_text||''; if(Array.isArray(raw))raw=raw.map(x=>x?.text||x?.content||'').join(''); let out=typeof raw==='object'&&raw?raw:null; if(!out&&typeof raw==='string'){raw=raw.trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');try{out=JSON.parse(raw);}catch{const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a>=0&&b>a)try{out=JSON.parse(raw.slice(a,b+1));}catch{}}} if(!out)return fallback(); const valid=values=>[...new Set(Array.isArray(values)?values:[])].map(Number).filter(x=>Number.isInteger(x)&&req.context[x-1]); const matches=valid(out.matched_source_ids||out.source_ids); const sources=valid(out.source_ids||matches).slice(0,8); const links=sources.map(x=>req.context[x-1].url); const note=req.truncated?'\\n\\nتوجه: برای کنترل هزینه فقط '+req.candidate_count+' پیام جدیدتر بررسی شد.':''; if(req.plan?.task==='count'){const detail=matches.length&&out.answer?'\\n'+String(out.answer).slice(0,1800):'';return [{json:{chat_id:req.chat_id,reply:'تعداد پیام‌های مرتبط: '+matches.length+' از '+req.candidate_count+' پیام بررسی‌شده.'+detail+(links.length?'\\n\\nمنابع نمونه:\\n'+links.join('\\n'):'')+note}}];} if(req.plan?.task==='summarize'){if(!matches.length)return [{json:{chat_id:req.chat_id,reply:'در محدوده مشخص‌شده پیام مرتبطی با موضوع سؤال پیدا نشد.'+note}}];if(!out.answer)return fallback();return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+(links.length?'\\n\\nمنابع:\\n'+links.join('\\n'):'')+note}}];} if(!out.has_answer||!out.answer||!links.length)return fallback(); return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+'\\n\\nمنابع:\\n'+links.join('\\n')+note}}];"
+        "jsCode": "const req=$('Build QA Request').first().json; const question=req.question||String($('Parse Command').first().json.question||'').replace(/\\u0645\\u0647\\u0646/g,'\\u0645\\u0647\\u0645').trim(); const latest=/\\u0622\\u062e\\u0631\\u06cc\\u0646\\s+\\u067e\\u06cc\\u0627\\u0645/.test(question); const fallback=()=>{const first=req.context?.[0];if(latest&&first){const text=String(first.summary||first.text||'').trim().slice(0,1200);return [{json:{chat_id:req.chat_id,reply:'The latest post is about:\\n'+text+'\\n\\nSource:\\n'+first.url}}];}return [{json:{chat_id:req.chat_id,reply:$json.error?'The AI service is temporarily unavailable. Please try again later.':'There is not enough information in the stored posts.'}}];}; if($json.error)return fallback(); const message=$json.choices?.[0]?.message||{}; let raw=message.content||message.reasoning||$json.output_text||''; if(Array.isArray(raw))raw=raw.map(x=>x?.text||x?.content||'').join(''); let out=typeof raw==='object'&&raw?raw:null; if(!out&&typeof raw==='string'){raw=raw.trim().replace(/^```(?:json)?\\s*/i,'').replace(/\\s*```$/,'');try{out=JSON.parse(raw);}catch{const a=raw.indexOf('{'),b=raw.lastIndexOf('}');if(a>=0&&b>a)try{out=JSON.parse(raw.slice(a,b+1));}catch{}}} if(!out)return fallback(); const valid=values=>[...new Set(Array.isArray(values)?values:[])].map(Number).filter(x=>Number.isInteger(x)&&req.context[x-1]); const matches=valid(out.matched_source_ids||out.source_ids); const sources=valid(out.source_ids||matches).slice(0,8); const links=sources.map(x=>req.context[x-1].url); const note=req.truncated?'\\n\\nNote: Only '+req.candidate_count+' newer posts were checked to control API usage.':''; if(req.plan?.task==='count'){const detail=matches.length&&out.answer?'\\n'+String(out.answer).slice(0,1800):'';return [{json:{chat_id:req.chat_id,reply:'Related posts: '+matches.length+' out of '+req.candidate_count+' checked posts.'+detail+(links.length?'\\n\\nSample sources:\\n'+links.join('\\n'):'')+note}}];} if(req.plan?.task==='summarize'){if(!matches.length)return [{json:{chat_id:req.chat_id,reply:'No related posts were found in the requested scope.'+note}}];if(!out.answer)return fallback();return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+(links.length?'\\n\\nSources:\\n'+links.join('\\n'):'')+note}}];} if(!out.has_answer||!out.answer||!links.length)return fallback(); return [{json:{chat_id:req.chat_id,reply:String(out.answer).slice(0,2800)+'\\n\\nSources:\\n'+links.join('\\n')+note}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1069,7 +911,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const allowed=new Set(($('Prepare User Scope').first().json.allowed_channels||[]).map(x=>String(x).toLowerCase())); const cutoff=Date.now()-24*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&allowed.has(String(r.channel_username||'').toLowerCase())&&new Date(r.published_at).getTime()>=cutoff).sort((a,b)=>Number(b.importance_score||0)-Number(a.importance_score||0)).slice(0,10); const body=rows.length?'خلاصه ۲۴ ساعت اخیر:\\n\\n'+rows.map(r=>'• ['+(r.topic||'عمومی')+'] '+(r.summary||r.text||'[بدون متن]').slice(0,260)+'\\n'+r.message_url).join('\\n\\n'):'در ۲۴ ساعت اخیر برای کانال‌های فعال شما پیامی ذخیره نشده است.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
+        "jsCode": "const p=$('Parse Command').first().json; const cutoff=Date.now()-24*3600000; const rows=$input.all().map(i=>i.json).filter(r=>r.message_id&&new Date(r.published_at).getTime()>=cutoff).sort((a,b)=>Number(b.importance_score||0)-Number(a.importance_score||0)).slice(0,10); const body=rows.length?'Latest 24-hour digest:\\n\\n'+rows.map(r=>'- ['+(r.topic||'General')+'] '+(r.summary||r.text||'[Post without text]').slice(0,260)+'\\n'+r.message_url).join('\\n\\n'):'No posts were stored in the last 24 hours.'; return [{json:{chat_id:p.chat_id,reply:body}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1124,7 +966,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار «'+p.keyword+'» ساخته شد. شناسه: '+$json.alert_id}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'Alert created for keyword: '+p.keyword+'\\nAlert ID: '+$json.alert_id}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1173,7 +1015,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; const rows=$input.all().map(i=>i.json).filter(r=>r.alert_id); return [{json:{chat_id:p.chat_id,reply:rows.length?'هشدارها:\\n'+rows.map(r=>'• '+r.alert_id+' — '+r.keyword).join('\\n'):'هشدار فعالی ندارید.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; const rows=$input.all().map(i=>i.json).filter(r=>r.alert_id); return [{json:{chat_id:p.chat_id,reply:rows.length?'Active alerts:\\n'+rows.map(r=>'- '+r.alert_id+' - '+r.keyword).join('\\n'):'You have no active alerts.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1325,7 +1167,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار '+p.alert_id+' حذف شد.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'Alert '+p.alert_id+' was removed.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1338,7 +1180,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'هشدار فعالی با این شناسه پیدا نشد.'}}];"
+        "jsCode": "const p=$('Parse Command').first().json; return [{json:{chat_id:p.chat_id,reply:'No active alert was found with this ID.'}}];"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -1426,21 +1268,21 @@
         ],
         [
           {
-            "node": "Get User Subscriptions",
+            "node": "Get Channel Messages",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Get User Subscriptions",
+            "node": "Get Recent Context",
             "type": "main",
             "index": 0
           }
         ],
         [
           {
-            "node": "Get User Subscriptions",
+            "node": "Get Digest Messages",
             "type": "main",
             "index": 0
           }
@@ -1609,7 +1451,7 @@
       "main": [
         [
           {
-            "node": "Prepare User Scope",
+            "node": "Format Subscription List",
             "type": "main",
             "index": 0
           }
@@ -1853,67 +1695,6 @@
           }
         ]
       ]
-    },
-    "Prepare User Scope": {
-      "main": [
-        [
-          {
-            "node": "Route User Scope",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Route User Scope": {
-      "main": [
-        [
-          {
-            "node": "Format Subscription List",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get Channel Messages",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Scope Denied Reply",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get Recent Context",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Get Digest Messages",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Scope Denied Reply": {
-      "main": [
-        [
-          {
-            "node": "Send Telegram Reply",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "pinData": {},
@@ -1921,7 +1702,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "none",
+    "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000000041",

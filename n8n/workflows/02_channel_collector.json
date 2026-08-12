@@ -369,7 +369,7 @@
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "return {json:{chat_id:String($json.chat_id||''),reply:String($json.reply||'خطای موقت در جمع‌آوری کانال.')}};"
+        "jsCode": "return {json:{chat_id:String($json.chat_id||''),reply:String($json.reply||'Temporary channel collection error.')}};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -385,7 +385,7 @@
         "resource": "message",
         "operation": "sendMessage",
         "chatId": "={{ $json.chat_id }}",
-        "text": "={{ String($json.reply || \"خطای داخلی\").slice(0, 4000) }}",
+        "text": "={{ String($json.reply || \"Internal error\").slice(0, 4000) }}",
         "additionalFields": {
           "appendAttribution": false
         }
@@ -532,7 +532,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "none",
+    "saveDataErrorExecution": "all",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000001013",
