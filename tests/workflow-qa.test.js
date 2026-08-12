@@ -20,7 +20,7 @@ function executeFormat(response, question = 'آخرین پیام مهن دربا
 test('Q&A request disables reasoning and normalizes the known typo', () => {
   const code = nodeCode('Build QA Request');
   assert.match(code, /reasoning:\{effort:'none'\}/);
-  assert.match(code, /replace\(\/مهن\/g,'مهم'\)/);
+  assert.match(code, /replace\(\/\\u0645\\u0647\\u0646\/g,'\\u0645\\u0647\\u0645'\)/);
 });
 
 test('Q&A accepts fenced JSON returned in the reasoning field', () => {
@@ -38,5 +38,5 @@ test('latest-message question has a grounded fallback on provider error', () => 
 
 test('arbitrary question reports provider failure instead of false no-context', () => {
   const result = executeFormat({ error: { code: 401, message: 'invalid credentials' } }, 'اقتصاد چه تغییری کرده؟');
-  assert.match(result[0].json.reply, /سرویس هوش مصنوعی/);
+  assert.match(result[0].json.reply, /AI service is temporarily unavailable/);
 });
