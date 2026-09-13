@@ -10,7 +10,7 @@ Internet
   → external n8n task runner
 ```
 
-The deployment pins n8n and its runner to the same release, stores n8n and PostgreSQL data in Docker volumes, publishes the n8n health port only on `127.0.0.1`, disables execution-payload retention, and keeps credentials in n8n's encrypted credential store. The real `.env` file, database data, credentials, and TLS keys must never be committed.
+The deployment pins n8n and its runner to the same release, stores n8n and PostgreSQL data in Docker volumes, publishes the n8n health port only on `127.0.0.1`, disables execution-payload retention, and keeps credentials in n8n's encrypted credential store. The external task runner stays registered instead of shutting down while idle, which avoids a launch race for the first Code node after startup. The real `.env` file, database data, credentials, and TLS keys must never be committed.
 
 ## Prerequisites
 
