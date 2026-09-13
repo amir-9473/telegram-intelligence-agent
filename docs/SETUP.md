@@ -11,3 +11,9 @@ Required message fields are `channel_username`, `message_id`, `message_url`, `te
 چهار Data Table با نام‌های `subscriptions`، `messages`، `alerts` و `alert_deliveries` بسازید. چهار فایل JSON داخل `n8n/workflows` را Import کنید، Credential ربات تلگرام را به تمام Nodeهای تلگرام و Credential مربوط به OpenRouter را به دو Node مربوطه وصل کنید؛ سپس Workflowها را فعال کنید.
 
 داده‌های زنده، Tokenها، API Keyها، chat IDها و Execution Exportها را هرگز در Git قرار ندهید. قبل از انتشار عمومی، [راهنمای حریم خصوصی](PRIVACY.md) را بررسی کنید.
+
+## Self-hosted deployment | استقرار روی VPS
+
+For a reproducible n8n 2 deployment with PostgreSQL, an external task runner, automatic Data Table creation, HTTPS reverse proxy configuration, health checks, backup guidance, and publish commands, use [Docker and VPS deployment](VPS_DEPLOYMENT.md).
+
+برای دیپلوی کامل n8n 2 روی VPS با PostgreSQL، Task Runner خارجی، ساخت خودکار Data Tableها، Reverse Proxy و HTTPS، Health Check و روش Publish کردن Workflowها، [راهنمای Docker و VPS](VPS_DEPLOYMENT.md) را دنبال کنید.

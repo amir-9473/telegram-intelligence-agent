@@ -35,3 +35,8 @@
 - [راه‌اندازی](SETUP.md)
 - [حریم خصوصی و استقرار](PRIVACY.md)
 - [راهنمای دموی رزومه‌ای](DEMO.md)
+- [استقرار Docker و VPS](VPS_DEPLOYMENT.md)
+
+## اجرای Production
+
+پروژه دارای `compose.yaml` برای n8n، PostgreSQL و Task Runner خارجی است. n8n فقط روی loopback و شبکه خصوصی Docker در دسترس قرار می‌گیرد و باید از طریق Reverse Proxy با HTTPS منتشر شود. Workflow راه‌اندازی نیز چهار Data Table لازم را به‌صورت idempotent ایجاد می‌کند. دستورها و نکات امنیتی کامل در [راهنمای استقرار](VPS_DEPLOYMENT.md) آمده‌اند.

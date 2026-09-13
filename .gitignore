@@ -1,0 +1,10 @@
+.env
+.env.*
+!.env.example
+backups/
+n8n-data/
+postgres-data/
+*.pem
+*.key
+*.crt
+credentials*.json
