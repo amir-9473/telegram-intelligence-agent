@@ -37,13 +37,13 @@ The reverse proxy must join the same network named by `PROXY_NETWORK`. A Caddy e
 
 ## Create the tables and import workflows
 
-After the n8n owner account exists, run:
+After the n8n owner account exists, create an owner API key in **Settings → n8n API**, then run:
 
 ```bash
-sh scripts/bootstrap-n8n.sh
+N8N_API_KEY='replace-with-the-owner-api-key' sh scripts/bootstrap-n8n.sh
 ```
 
-This idempotently creates `subscriptions`, `messages`, `alerts`, and `alert_deliveries`, then imports the four runtime workflows. Imports stay unpublished until credentials are attached and verification is complete.
+The script uses n8n's supported public Data Table API to idempotently create `subscriptions`, `messages`, `alerts`, and `alert_deliveries`, then imports the four runtime workflows. Imports stay unpublished until credentials are attached and verification is complete. CLI workflow execution cannot initialize the Data Table module while the main n8n process is running, so the script intentionally does not use `n8n execute` for table creation.
 
 Create one Telegram credential and attach it to every Telegram and Telegram Trigger node. Create one HTTP Header Auth credential with header name `Authorization` and value `Bearer YOUR_OPENROUTER_KEY`, then attach it to `OpenRouter QA` and `OpenRouter Batch`.
 
@@ -77,4 +77,4 @@ Update with `git pull`, review the n8n release notes, run the repository tests, 
 
 فایل `compose.yaml` یک استقرار production شامل n8n، PostgreSQL و Task Runner خارجی می‌سازد. دیتابیس و n8n مستقیماً public نیستند؛ فقط Reverse Proxy روی HTTPS به کانتینر `telegram-intelligence-n8n:5678` متصل می‌شود. مقدارهای واقعی `.env`، توکن تلگرام، کلید OpenRouter، Credential export و گواهی خصوصی نباید وارد Git شوند.
 
-پس از ساخت `.env` و شبکه `public-proxy`، سرویس‌ها را با `docker compose up -d` اجرا کنید. بعد از ساخت حساب Owner در صفحه n8n، دستور `sh scripts/bootstrap-n8n.sh` چهار Data Table را می‌سازد و Workflowها را به حالت منتشرنشده Import می‌کند. Credential تلگرام و OpenRouter را متصل کنید، تست واقعی بات را انجام دهید و سپس Workflowها را با دستورهای بالا Publish کنید.
+پس از ساخت `.env` و شبکه `public-proxy`، سرویس‌ها را با `docker compose up -d` اجرا کنید. بعد از ساخت حساب Owner در صفحه n8n، از بخش **Settings → n8n API** یک API key بسازید و دستور `N8N_API_KEY='...' sh scripts/bootstrap-n8n.sh` را اجرا کنید. این دستور چهار Data Table را از API رسمی n8n می‌سازد و Workflowها را به حالت منتشرنشده Import می‌کند. Credential تلگرام و OpenRouter را متصل کنید، تست واقعی بات را انجام دهید و سپس Workflowها را با دستورهای بالا Publish کنید.

@@ -8,6 +8,7 @@ const path = require('node:path');
 const root = path.join(__dirname, '..');
 const compose = fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8');
 const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
+const bootstrapScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap-n8n.sh'), 'utf8');
 const bootstrap = JSON.parse(fs.readFileSync(path.join(root, 'n8n', 'bootstrap', '00_create_data_tables.json'), 'utf8'));
 
 test('production compose pins n8n and keeps stateful services private', () => {
@@ -35,5 +36,14 @@ test('bootstrap workflow creates all required data tables idempotently', () => {
     assert.equal(node.parameters.resource, 'table');
     assert.equal(node.parameters.operation, 'create');
     assert.equal(node.parameters.options.createIfNotExists, true);
+  }
+});
+
+test('deployment bootstrap uses the supported data table API', () => {
+  assert.match(bootstrapScript, /\/api\/v1\/data-tables/);
+  assert.match(bootstrapScript, /X-N8N-API-KEY/);
+  assert.doesNotMatch(bootstrapScript, /n8n execute/);
+  for (const table of ['subscriptions', 'messages', 'alerts', 'alert_deliveries']) {
+    assert.match(bootstrapScript, new RegExp(`create_table_if_missing ${table}`));
   }
 });
