@@ -10,6 +10,7 @@ const compose = fs.readFileSync(path.join(root, 'compose.yaml'), 'utf8');
 const envExample = fs.readFileSync(path.join(root, '.env.example'), 'utf8');
 const bootstrapScript = fs.readFileSync(path.join(root, 'scripts', 'bootstrap-n8n.sh'), 'utf8');
 const bootstrap = JSON.parse(fs.readFileSync(path.join(root, 'n8n', 'bootstrap', '00_create_data_tables.json'), 'utf8'));
+const botControl = JSON.parse(fs.readFileSync(path.join(root, 'n8n', 'workflows', '01_bot_control.json'), 'utf8'));
 
 test('production compose pins n8n and keeps stateful services private', () => {
   const postgresService = compose.split('\n  n8n:\n')[0];
@@ -46,4 +47,10 @@ test('deployment bootstrap uses the supported data table API', () => {
   for (const table of ['subscriptions', 'messages', 'alerts', 'alert_deliveries']) {
     assert.match(bootstrapScript, new RegExp(`create_table_if_missing ${table}`));
   }
+});
+
+test('Telegram trigger has a stable webhook ID', () => {
+  const trigger = botControl.nodes.find((node) => node.type === 'n8n-nodes-base.telegramTrigger');
+  assert.ok(trigger);
+  assert.match(trigger.webhookId, /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i);
 });
