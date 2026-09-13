@@ -21,6 +21,7 @@ test('production compose pins n8n and keeps stateful services private', () => {
   assert.match(compose, /N8N_RUNNERS_MODE: external/);
   assert.match(compose, /N8N_RUNNERS_ENABLED: "true"/);
   assert.match(compose, /N8N_RUNNERS_AUTO_SHUTDOWN_TIMEOUT: "0"/);
+  assert.match(compose, /n8n:\n        condition: service_started/);
   assert.match(compose, /EXECUTIONS_DATA_SAVE_ON_ERROR: none/);
   assert.match(compose, /EXECUTIONS_DATA_SAVE_ON_SUCCESS: none/);
 });

@@ -108,7 +108,7 @@ services:
       TZ: ${TZ:-Asia/Tehran}
     depends_on:
       n8n:
-        condition: service_healthy
+        condition: service_started
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
