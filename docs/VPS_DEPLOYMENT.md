@@ -31,7 +31,7 @@ docker compose ps
 curl -fsS http://127.0.0.1:5678/healthz
 ```
 
-Generate independent random values for `N8N_ENCRYPTION_KEY`, `RUNNERS_AUTH_TOKEN`, `POSTGRES_PASSWORD`, and `POSTGRES_NON_ROOT_PASSWORD`. Set `N8N_HOST`, `N8N_EDITOR_BASE_URL`, and `WEBHOOK_URL` to the externally reachable HTTPS address. Keep the trailing slash in `WEBHOOK_URL`.
+Generate independent random values for `N8N_ENCRYPTION_KEY`, `RUNNERS_AUTH_TOKEN`, `POSTGRES_PASSWORD`, and `POSTGRES_NON_ROOT_PASSWORD`. Set `N8N_HOST`, `N8N_EDITOR_BASE_URL`, and `N8N_WEBHOOK_URL` to the externally reachable HTTPS address. Keep the trailing slash in `N8N_WEBHOOK_URL`.
 
 The reverse proxy must join the same network named by `PROXY_NETWORK`. A Caddy example is available at [`deploy/Caddyfile.example`](../deploy/Caddyfile.example). Set `N8N_PROXY_HOPS=1` when there is one reverse proxy between the internet and n8n, as the included Compose file does.
 
