@@ -1,4 +1,5 @@
 {
+  "id": "tiaEnrichment003",
   "name": "Telegram Intelligence Agent — AI Enrichment and Alerts",
   "nodes": [
     {
@@ -221,12 +222,44 @@
     },
     {
       "parameters": {
-        "jsCode": "const alerts=$input.all().map(i=>i.json).filter(x=>x.alert_id);const msgs=$items('Get Candidate Messages').map(i=>i.json);const out=[];for(const a of alerts)for(const m of msgs){if(a.channel_username&&a.channel_username!=='*'&&a.channel_username!==m.channel_username)continue;if(!String(m.text||'').toLocaleLowerCase('fa').includes(String(a.keyword||'').toLocaleLowerCase('fa')))continue;out.push({json:{delivery_key:a.alert_id+':'+m.channel_username+':'+m.message_id,alert_id:a.alert_id,chat_id:String(a.chat_id),channel_username:m.channel_username,message_id:m.message_id,keyword:a.keyword,message_url:m.message_url,summary:m.summary||String(m.text||'').slice(0,240),status:'pending',created_at:new Date().toISOString()}});}return out;"
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "value": "subscriptions",
+          "mode": "name"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "status",
+              "condition": "eq",
+              "keyValue": "active"
+            }
+          ]
+        },
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        820,
+        0
+      ],
+      "id": "00000000-0000-4000-8000-000000002015",
+      "name": "Get Alert Subscriptions",
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const subscriptions=$input.all().map(i=>i.json).filter(x=>x.chat_id&&x.channel_username);const allowed=new Set(subscriptions.map(x=>String(x.chat_id)+'\\u0000'+String(x.channel_username).toLowerCase()));const alerts=$items('Get Active Alerts').map(i=>i.json).filter(x=>x.alert_id);const msgs=$items('Get Candidate Messages').map(i=>i.json);const out=[];for(const a of alerts)for(const m of msgs){if(!allowed.has(String(a.chat_id)+'\\u0000'+String(m.channel_username).toLowerCase()))continue;if(a.channel_username&&a.channel_username!=='*'&&a.channel_username!==m.channel_username)continue;if(!String(m.text||'').toLocaleLowerCase('fa').includes(String(a.keyword||'').toLocaleLowerCase('fa')))continue;out.push({json:{delivery_key:a.alert_id+':'+m.channel_username+':'+m.message_id,alert_id:a.alert_id,chat_id:String(a.chat_id),channel_username:m.channel_username,message_id:m.message_id,keyword:a.keyword,message_url:m.message_url,summary:m.summary||String(m.text||'').slice(0,240),status:'pending',created_at:new Date().toISOString()}});}return out;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        820,
+        1060,
         0
       ],
       "id": "00000000-0000-4000-8000-000000002010",
@@ -402,7 +435,7 @@
       "main": [
         [
           {
-            "node": "Match Alerts",
+            "node": "Get Alert Subscriptions",
             "type": "main",
             "index": 0
           }
@@ -452,6 +485,17 @@
           }
         ]
       ]
+    },
+    "Get Alert Subscriptions": {
+      "main": [
+        [
+          {
+            "node": "Match Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "pinData": {},
@@ -459,7 +503,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "all",
+    "saveDataErrorExecution": "none",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000002015",

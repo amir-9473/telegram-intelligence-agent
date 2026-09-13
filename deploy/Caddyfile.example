@@ -1,0 +1,16 @@
+n8n.example.com {
+	reverse_proxy telegram-intelligence-n8n:5678 {
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

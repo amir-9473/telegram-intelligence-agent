@@ -63,12 +63,27 @@ node tests/validate-workflows.js
 node --test tests/*.test.js
 ```
 
+### Docker and VPS deployment
+
+The repository includes a production-oriented Docker Compose stack with pinned n8n and task-runner versions, PostgreSQL persistence, private container networking, health checks, log rotation, and an idempotent Data Table bootstrap workflow. Copy `.env.example` to `.env`, generate fresh secrets, attach the stack to an HTTPS reverse proxy, then follow [Docker and VPS deployment](docs/VPS_DEPLOYMENT.md).
+
+```bash
+docker network create public-proxy
+docker compose config
+docker compose pull
+docker compose up -d
+sh scripts/bootstrap-n8n.sh
+```
+
+n8n binds to `127.0.0.1:5678` for local health checks and is exposed publicly only through the reverse proxy. Telegram and OpenRouter credentials stay in n8n's encrypted credential store and are never committed.
+
 ### Documentation
 
 - [Architecture](docs/ARCHITECTURE.md)
 - [Setup](docs/SETUP.md)
 - [Privacy and deployment](docs/PRIVACY.md)
 - [Demo guide](docs/DEMO.md)
+- [Docker and VPS deployment](docs/VPS_DEPLOYMENT.md)
 - [راهنمای فارسی](docs/README_FA.md)
 
 ### Limitations
@@ -84,3 +99,5 @@ Only public channels with an available `t.me/s/<username>` preview are supported
 این مخزن فقط شامل منطق Workflowها، کدهای کمکی JavaScript، داده‌های تستی مصنوعی و تست‌هاست؛ توکن ربات، کلید API، chat ID، تاریخچه اجرای n8n و داده‌های واقعی کانال‌ها در آن قرار نمی‌گیرند.
 
 برای جزئیات فارسی، [راهنمای پروژه](docs/README_FA.md) را ببینید.
+
+استقرار production با Docker Compose، PostgreSQL، Task Runner خارجی، Health Check و Reverse Proxy در [راهنمای Docker و VPS](docs/VPS_DEPLOYMENT.md) مستند شده است. Secretها فقط در فایل محلی `.env` و Credential Store رمزنگاری‌شده n8n نگهداری می‌شوند و نباید وارد Git شوند.

@@ -1,4 +1,5 @@
 {
+  "id": "tiaDailyDigest04",
   "name": "Telegram Intelligence Agent — Daily Digest",
   "nodes": [
     {
@@ -196,7 +197,7 @@
   "settings": {
     "executionOrder": "v1",
     "timezone": "Asia/Tehran",
-    "saveDataErrorExecution": "all",
+    "saveDataErrorExecution": "none",
     "saveDataSuccessExecution": "none"
   },
   "versionId": "00000000-0000-4000-8000-000000003007",
